@@ -1,0 +1,308 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
+#include <map>
+
+using namespace std;
+
+vector <vector<char>> seq;
+vector <vector<int>> qual;
+
+vector <vector<char>> perf_seq(5);
+vector <vector<int>> perf_qual(5);
+
+void odczyt(){
+    fstream fest;
+    fstream quality;
+
+    fest.open("f.fasta", ios::in|ios::out);
+    quality.open("q.qual", ios::in|ios::out);
+
+    string line_seq;
+    string line_qual;
+
+    while(getline(fest, line_seq)){
+        if(line_seq.find('>') != string::npos){
+            continue;
+        }
+        seq.push_back(vector<char>(line_seq.begin(), line_seq.end()));
+    }
+
+    while(getline(quality, line_qual)) {
+        if (line_qual.find('>') != string::npos) {
+            continue;
+        }
+        istringstream przerobionaliniaXD(line_qual);
+        qual.push_back(vector<int>(istream_iterator<int>(przerobionaliniaXD), istream_iterator<int>()));
+    }
+
+    fest.close();
+    quality.close();
+}
+
+void showContent(vector<vector<char>> sequences, vector<vector<int>> qualities) {
+    cout << "\n";
+    for (int i=0; i<sequences.size(); i++) {
+        cout << "Sekwencja "<< i+1 << ": ";
+        for (char singleSeq: sequences[i]) {
+            cout << singleSeq;
+        }
+        cout << "\n";
+        cout << "Jakosc sekwencji " << i+1 << ": " << endl;
+        for (int singleQuality: qualities[i]) {
+            cout << singleQuality << " ";
+        }
+        cout << "\n";
+        cout << "\n";
+    }
+}
+void kropkuj(int prog){
+    for (int i=0; i<5; i++){
+        for (int j=0; j<seq[i].size(); j++){
+            if(qual[i][j]<prog){
+                seq[i][j] = '.';
+            }
+        }
+    }
+}
+
+vector<vector<int>> uzupelniam(vector <vector<int>> qual){
+    vector<vector<int>> tmp_pozycje(5);
+    for (int i=0; i<5; i++){
+        for(int j=0; j<qual[i].size(); j++){
+            tmp_pozycje[i].push_back(j+1);
+        }
+    }
+    return tmp_pozycje;
+}
+
+void kropkuj2(){
+
+    for (int i=0; i<5; i++){
+        for (int j=0; j<seq[i].size(); j++){
+            if(seq[i][j] == '.'){
+                qual[i][j] = 0;
+            }
+        }
+    }
+}
+
+void new_seq(){
+    for(int i=0; i<5; i++){
+        for(int j=0; j<seq[i].size(); j++){
+            if(seq[i][j] != '.'){
+                perf_seq[i].push_back(seq[i][j]);
+            }
+            if(qual[i][j] != 0){
+                perf_qual[i].push_back(qual[i][j]);
+            }
+        }
+    }
+}
+
+vector<vector<int>> usuwanie1987389(vector <vector<int>> pozycje){
+    vector<vector<int>> nowe_poz(5);
+    for(int i=0; i<5; i++){
+        for(int j=0; j<seq[i].size(); j++){
+            if(seq[i][j] != '.'){
+                nowe_poz[i].push_back(pozycje[i][j]);
+            }
+        }
+    }
+    return nowe_poz;
+}
+
+void create_verticles(vector <vector<int>> pozycje, vector<vector<pair<string,int>>> &podciagi, int dl_podciagu){
+    for(int i=0; i<podciagi.size(); i++){
+        int ograniczenia = perf_seq[i].size()-dl_podciagu+1;
+        for(int j=0; j<ograniczenia; j++){
+            string single_podciag = "";
+            for(int k=j; k<dl_podciagu + j; k++){
+                single_podciag += perf_seq[i][k];
+            }
+            pair<string, int> pppp = make_pair(single_podciag, pozycje[i][j]);
+            //pppp - pojedynczy podciag i jego pojedyncza pozycja
+            podciagi[i].push_back(pppp);
+        }
+    }
+}
+
+bool count_differents(int current_position, int tmp_position, int dl_podciagu){
+    int greater, smaller;
+    if(current_position >= tmp_position){
+        greater = current_position;
+        smaller = tmp_position;
+    } else {
+        greater = tmp_position;
+        smaller = current_position;
+    }
+    if(greater - smaller <= dl_podciagu * 10){
+        return true;
+    } else{
+        return false;
+    }
+}
+
+void create_graph(vector <vector<pair<string,pair<int,vector<pair<int, int>>>>>> &graf, vector<vector<pair<string,int>>> podciagi, int dl_podciagu){
+    for(int i=0; i<5; i++){
+        for(int j=0; j<podciagi[i].size(); j++){            // zbior 0++
+            string current_oligo = podciagi[i][j].first;
+            int current_position = podciagi[i][j].second;
+            vector<pair<int, int>> tmp_all_connections;
+            for(int k=i+1; k<5; k++){ // i+1 bo k to przeskok, np. jak mamy od 0 do 5 to k dba o przeskok od 1 do 5  //zbior 1++
+                for(int l=0; l<podciagi[k].size(); l++){ //l badanie bierzacego
+                    if(podciagi[k][l].first == current_oligo && count_differents(current_position, podciagi[k][l].second, dl_podciagu)){ //war z zad
+                        pair<int, int> tmp_connect = make_pair(k, podciagi[k][l].second); //pojed polacz == jedna krawedz XD para ze zbioru i laczaca sie z podciagiem z next zb
+                        tmp_all_connections.push_back(tmp_connect); //wszystkie kraw dla jednego oligo
+                    }
+                }
+            }
+            pair<int, vector<pair<int, int>>> cur_pos_ac = make_pair(current_position, tmp_all_connections); //polacz pozycji badanego curr poz z krawedziami ;; nastepniki
+            pair<string, pair<int, vector< pair< int, int>>>> oligo_cur_pos_ac = make_pair(current_oligo, cur_pos_ac); //oligo + jego poz + jego kraw
+            graf[i].push_back(oligo_cur_pos_ac); //dodajemy wszystkie zanim przejdziemy do next oligo
+        }
+    }
+}
+
+bool validateqlique(vector<pair<int, int>> pseudonastepniki){ //czy nastepniki lacza sie z seq 1,2...
+    int punkty1 = 0;
+    int punkty2 = 0;
+    int punkty3 = 0;
+    int punkty4 = 0;
+    for(auto nastepnik: pseudonastepniki){
+        if(nastepnik.first == 1){
+            punkty1 += 1;
+        }
+        else if(nastepnik.first == 2){
+            punkty2 += 2;
+        }
+        else if(nastepnik.first == 3){
+            punkty3 += 3;
+        }
+        else if(nastepnik.first == 4){
+            punkty4 += 4;
+        }
+    }
+    if(punkty1>0 && punkty2>0 && punkty3>0 && punkty4>0){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
+
+void uzupelnijmape(map<pair<int, int>, vector<pair<int, int>>> &nastepnikimotywu, vector<pair<int, int>> pseudonastepniki){
+    for(int i=0; i<pseudonastepniki.size(); i++){
+        int forbiddenfruit = pseudonastepniki[i].first;
+        vector<pair<int, int>> tmp_laczenie;
+        for(int j=i+1; j<pseudonastepniki.size(); j++){
+            if(pseudonastepniki[j].first == forbiddenfruit){
+                continue;
+            }
+            tmp_laczenie.push_back(pseudonastepniki[j]);
+        }
+        nastepnikimotywu[pseudonastepniki[i]] = tmp_laczenie;
+    }
+}
+
+bool porownajwektory(vector<pair<int, int>> topowinnobyc, vector<pair<int, int>> tojest){
+    sort(topowinnobyc.begin(), topowinnobyc.end());
+    sort(tojest.begin(), tojest.end());
+    if(includes(tojest.begin(), tojest.end(), topowinnobyc.begin(), topowinnobyc.end())){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
+
+void motywy(vector <vector<pair<string,pair<int,vector<pair<int, int>>>>>> graf){
+    for(int i=0; i<graf[0].size(); i++){
+        if(validateqlique(graf[0][i].second.second)){
+            map<pair<int, int>, vector<pair<int, int>>> nastepnikimotywu; //pair - nr seq i jego pozycja vector-nast ktore musza tam byc
+            uzupelnijmape(nastepnikimotywu, graf[0][i].second.second);
+            int iteracja = 0;
+            for(auto single_elem: nastepnikimotywu){
+                for(int j=0; j<graf[single_elem.first.first].size(); j++){ //przechodzimy po kazdym el mapy i wyciagamy z niego poz
+                    if(graf[single_elem.first.first][j].second.first == single_elem.first.second){
+                        if(porownajwektory(single_elem.second, graf[single_elem.first.first][j].second.second)){
+                            iteracja++; //validacja czy kazda krawedz z kazda sie pokrywa (gwiazda czy klika)
+                        }
+                    }
+                }
+            }
+            if(iteracja == graf[0][i].second.second.size()){
+                cout << "motyw: " << graf[0][i].first << endl;
+                cout << "sekwencja: 1, " << "nr pozycji: " << graf[0][i].second.first << endl;
+                for(auto next: graf[0][i].second.second){
+                    cout << "sekwencja: " << next.first + 1 << ", nr pozycji: " << next.second << endl;
+                }
+                exit(0);
+            }
+        }
+    }
+    cout << "Nie znaleziono motywu.";
+}
+
+int main() {
+    odczyt();
+    vector <vector<int>> pozycje(5);
+    pozycje = uzupelniam(qual);
+    showContent(seq, qual);
+    cout << endl;
+//    for(int i =0; i<5; i++){
+//        cout << "seq " << i << ": ";
+//        for(int poz: pozycje[i]){
+//            cout << poz << " ";
+//        }
+//    }
+    int prog;
+    cout <<"Podaj ten prog" << endl;
+    cin >> prog;
+    kropkuj(prog);
+    kropkuj2();
+    vector<vector<int>> perf_pozycje = usuwanie1987389(pozycje);
+        for(int i =0; i<5; i++){
+            cout << "seq " << i << ": ";
+        for(int poz: perf_pozycje[i]){
+            cout << poz << " ";
+            }
+        cout << endl;
+        }
+    showContent(seq, qual);
+    new_seq();
+    showContent(perf_seq, perf_qual);
+    vector<vector<pair<string,int>>> podciagi(5);
+    int dl_podciagu;
+    cout << "podaj dlugosc podciagu: " << endl;
+    cin >> dl_podciagu;
+    create_verticles(perf_pozycje, podciagi, dl_podciagu);
+    for(int i=0; i<5; i++){
+        cout << "seq" << i << " wierzcholki: ";
+        for(int j=0; j<podciagi[i].size(); j++){
+            cout << podciagi[i][j].first << ":" << podciagi[i][j].second << " ";
+        }
+        cout << endl;
+    }
+    vector <vector<pair<string,pair<int,vector<pair<int, int>>>>>> graf(5);
+    create_graph(graf, podciagi, dl_podciagu);
+    cout << "graf" << endl;
+    cout << endl;
+    for(int i=0; i<5; i++){
+        cout << "seq " << i << " verts --> "; //pochodzenie struktury //wierzcholki seq1
+        for(auto wwjs: graf[i]){ //wszystkie wierzcholki jednej sekwencji
+            cout << wwjs.first << "/ " << wwjs.second.first << ": "; //najpierw oligo potem jego pozycja pierwotna ten zbior
+            for(auto wwjs_cont: wwjs.second.second){ //wszystkie kraw
+                cout << wwjs_cont.first << ", " << wwjs_cont.second << " ";
+            }
+        }
+        cout << endl;
+        cout << endl;
+    }
+    motywy(graf);
+    return 0;
+}
