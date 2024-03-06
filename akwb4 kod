@@ -1,0 +1,127 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
+#include <map>
+#include <math.h>
+#include <optional>
+#include <set>
+#include <numeric>
+#include <chrono>
+using namespace std;
+
+vector <int> A;
+vector <int> mapa;
+int ilosc_ciec=0;
+
+void Odczyt(){
+    fstream multizbior("C:\\Users\\Dell\\CLionProjects\\akwb4good\\cmake-build-debug\\instancja.txt");
+
+    int value=0;
+
+    if(multizbior.is_open()){
+        while(multizbior>>value){
+            A.push_back(value);
+        }
+        for(auto e:A){
+            cout<<e<<" ";
+        }
+    }
+    else{
+        cerr<<"nie moge otworzyc pliku"; //cerr for errors
+    }
+}
+
+void Czy_dobre(){ //zaleznosc ciec od wielkosci multizbioru A
+    auto k=(-3+sqrt(8*A.size()+1))/2;
+    if (k-floor(k) !=0) {  //zaokraglij
+        cout << "jakies bledy wejscie";
+        exit(0);
+    }
+    ilosc_ciec=k; //ilosc_ciec ilosc ciec u mnie czyli +1 to ilosc elementow
+    cout << "\nilosc ciec: " << ilosc_ciec << endl;
+}
+
+int Pierwszy_element(){
+    //ostatni elem - przedostatni elem zbioru
+
+    sort(A.begin(), A.end());
+    int ostatni = A[A.size()-1];
+    int przedostatni = A[A.size()-2];
+    int pierwszy = (ostatni - przedostatni);
+
+    if(find(A.begin(), A.end(), pierwszy)==A.end()){
+        cout<<"\nnie utworzysz mapy bo nie ma tego elementu"<<endl;
+        exit(0);
+    }
+    cout<<"\n";
+    cout << "ostatni: " << ostatni << " przedostatni: " << przedostatni << " pierwszy:  "<< pierwszy << std::endl;
+
+
+    for(auto el:A ){
+        cout<<el<<" ";
+    }
+    mapa.push_back(pierwszy);
+}
+
+optional<vector<int>> Szukaj(int size, vector<int> A, const vector<int>& mapa)
+{
+    if(find(A.begin(), A.end(), size)!=A.end()){
+        A.erase(find(A.begin(), A.end(), size));
+        if(A.empty())
+            return mapa;
+
+        for(auto i = mapa.begin(); i != mapa.end(); ++i){
+            auto sum = accumulate(i, mapa.end(), 0);
+            if(find(A.begin(), A.end(), sum)==A.end())
+                return {};
+            A.erase(find(A.begin(), A.end(), sum));
+        }
+
+        for(const auto& each: A) {
+            vector<int> nowa_mapa = mapa;
+            nowa_mapa.push_back(each);
+            if(auto wynik = Szukaj(size - *mapa.rbegin(), A, nowa_mapa))
+                return wynik;
+        }
+    }
+    return {};
+}
+int main() {
+    Odczyt();
+    Czy_dobre();
+    Pierwszy_element();
+
+    auto start = chrono::steady_clock::now();
+
+    auto x = *A.rbegin() - *(++A.rbegin());
+    if (auto wynik= Szukaj(*A.rbegin(), A, { x })) {
+        std::cout << "\nmapa = (";
+        for (const auto& each : wynik.value())
+            std::cout << each << ", ";
+        std::cout << ")\n";
+    }
+    else
+        std::cout << "Brak rozwiazan\n";
+    auto end = chrono::steady_clock::now();
+    int mikrosek = chrono::duration_cast<chrono::microseconds>(end - start).count();
+    int milisek = chrono::duration_cast<chrono::milliseconds>(end - start).count();
+    int sek = chrono::duration_cast<chrono::seconds>(end - start).count();
+    int min = (chrono::duration_cast<chrono::seconds>(end - start).count()) / 60;
+
+    if (milisek == 0) {
+        cout << endl << "Czas w mikrosekundach: " << mikrosek << " us" << endl;
+    }
+    else if (sek < 10) {
+        cout << endl << "Czas w milisekundach: " << milisek << " ms" << endl;
+    }
+    else if (min == 0) {
+        cout << endl << "Czas w sekundach: " << sek << " sek" << endl;
+    }
+    else {
+        cout << endl << "Czas w minutach: " << min << " min" << endl;
+    }
+}
