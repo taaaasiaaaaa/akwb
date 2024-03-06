@@ -306,3 +306,4 @@ int main() {
     motywy(graf);
     return 0;
 }
+
